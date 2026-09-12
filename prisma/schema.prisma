@@ -1,0 +1,131 @@
+// Prisma 6 schema — accountant portfolio
+// One admin, content-driven public site.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// --- Auth.js v5 required models (Credentials-only, but we keep Session/Account
+// for adapter compatibility and future-proofing) ---
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  passwordHash  String
+  emailVerified DateTime?
+  image         String?
+  accounts      Account[]
+  sessions      Session[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// --- Site content ---
+
+// Singleton row (id always "profile") holding hero/about/contact/theme settings
+model Profile {
+  id String @id @default("profile")
+
+  // Hero
+  name       String  @default("Your Name")
+  title      String  @default("Chartered Accountant")
+  heroTagline String @default("Numbers you can trust, insight you can act on.")
+  heroImageUrl String?
+
+  // About
+  bio        String  @default("Write a short professional bio here.")
+
+  // Stats shown in hero (the "ledger tally")
+  yearsExperience Int @default(0)
+  clientsServed   Int @default(0)
+  projectsDone    Int @default(0)
+
+  // Contact
+  contactEmail String  @default("you@example.com")
+  phone        String?
+  location     String?
+  calendlyUrl  String?
+  linkedinUrl  String?
+  twitterUrl   String?
+  resumeUrl    String?
+
+  // Theme (the one design knob the admin can change)
+  accentColor String @default("#B08D57")
+
+  updatedAt DateTime @updatedAt
+}
+
+model Experience {
+  id          String   @id @default(cuid())
+  company     String
+  role        String
+  startDate   DateTime
+  endDate     DateTime?
+  current     Boolean  @default(false)
+  location    String?
+  bullets     String[] // achievement bullet points
+  order       Int      @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Project {
+  id          String   @id @default(cuid())
+  title       String
+  summary     String
+  description String?
+  client      String?
+  imageUrl    String?
+  tags        String[]
+  order       Int      @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Certification {
+  id           String    @id @default(cuid())
+  name         String
+  issuer       String
+  issueDate    DateTime?
+  credentialUrl String?
+  order        Int       @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
