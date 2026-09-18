@@ -23,13 +23,16 @@ Fill in `.env.local`:
 - `ADMIN_EMAIL` / `ADMIN_PASSWORD` — only used once, to create your admin
   login (see step 2). Not read at runtime.
 - `RESEND_API_KEY` — from resend.com, for the contact form to send you email.
+- `CRON_SECRET` — a random secret used to authenticate daily trial reminder jobs.
 - `BLOB_READ_WRITE_TOKEN` — only needed for local dev; Vercel sets this
   automatically once you create a Blob store in your project's Storage tab.
+- `SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DSN` — optional Sentry error monitoring DSNs.
+- `SENTRY_TRACES_SAMPLE_RATE` / `NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE` — optional trace sampling rates.
 
-Push the schema and create your admin account:
+Create and apply a development migration, then create your admin account:
 
 ```bash
-npm run db:push
+npm run db:migrate
 npm run db:seed
 ```
 
@@ -42,6 +45,10 @@ npm run dev
 Visit `/` for the public site, `/signup` to create a workspace with a 30-day
 free trial, and `/admin/login` to sign in.
 
+Trial reminders are sent by the `/api/cron/trial-reminders` Vercel Cron job.
+Keep `RESEND_API_KEY`, `CONTACT_FROM_EMAIL`, and `CRON_SECRET` configured in
+the deployment environment.
+
 ## 2. Deploying to Vercel
 
 1. Push this repo to GitHub, then import it in Vercel.
@@ -53,7 +60,7 @@ free trial, and `/admin/login` to sign in.
 4. Deploy. Then run the schema push + seed once against production, e.g.
    from your machine with the production `DATABASE_URL`:
    ```bash
-   DATABASE_URL="<prod-url>" npm run db:push
+  DATABASE_URL="<prod-url>" npm run db:migrate:deploy
    DATABASE_URL="<prod-url>" ADMIN_EMAIL=you@example.com ADMIN_PASSWORD=... npm run db:seed
    ```
 5. Sign in at `yourdomain.com/admin/login`.

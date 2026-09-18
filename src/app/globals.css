@@ -48,6 +48,18 @@ body {
   outline-offset: 2px;
 }
 
+[data-template="studio"] {
+  --paper: #f3efe8;
+  --paper-raised: #fffaf3;
+  --line: #d9cfc1;
+}
+
+[data-template="signal"] {
+  --paper: #eef2f3;
+  --paper-raised: #f8fbfb;
+  --line: #cbd6d8;
+}
+
 .tabular {
   font-variant-numeric: tabular-nums;
 }

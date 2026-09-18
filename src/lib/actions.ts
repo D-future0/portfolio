@@ -12,7 +12,10 @@ import {
   changePasswordSchema,
   publishSchema,
   signupSchema,
+  onboardingSchema,
 } from "@/lib/validation";
+import { getProfessionExample } from "@/lib/onboarding";
+import { createAuthToken, sendAuthEmail } from "@/lib/auth-tokens";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -56,9 +59,10 @@ export async function registerTenant(raw: unknown): Promise<ActionResult> {
   try {
     const data = signupSchema.parse(raw);
     const passwordHash = await (await import("bcryptjs")).default.hash(data.password, 12);
+    const trialStartedAt = new Date();
     const trialEndsAt = trialEndDate();
 
-    await db.$transaction(async (tx) => {
+    const owner = await db.$transaction(async (tx) => {
       const owner = await tx.user.create({
         data: {
           email: data.email,
@@ -72,20 +76,54 @@ export async function registerTenant(raw: unknown): Promise<ActionResult> {
           slug: data.slug,
           name: data.workspaceName,
           title: "Independent Professional",
-          published: true,
-          approvedAt: new Date(),
+          published: false,
+          approvedAt: null,
+          trialStartedAt,
           trialEndsAt,
           ownerId: owner.id,
         },
       });
-      await tx.profile.create({ data: { id: "profile", tenantId: tenant.id, name: data.name } });
+      await tx.profile.create({ data: { id: "profile", tenantId: tenant.id, name: data.name, contactEmail: data.email } });
+      return owner;
     });
+    const token = await createAuthToken(owner.id, "verify_email");
+    await sendAuthEmail(owner.email, token, "verify_email");
 
     return { ok: true };
   } catch (err) {
     if (err instanceof Error && err.message.includes("Unique constraint")) {
       return { ok: false, error: "That email or workspace URL is already in use." };
     }
+    return { ok: false, error: message(err) };
+  }
+}
+
+export async function completeOnboarding(raw: unknown): Promise<ActionResult> {
+  try {
+    const session = await requireSession();
+    const data = onboardingSchema.parse(raw);
+    if (session.user.role !== "TENANT" || !session.user.tenantId) throw new Error("Forbidden");
+    const tenant = await db.tenant.findUnique({ where: { id: session.user.tenantId }, include: { profile: true } });
+    if (!tenant) throw new Error("Workspace not found");
+    if (tenant.onboardingCompleted) return { ok: true };
+    const example = getProfessionExample(data.profession);
+
+    await db.$transaction(async (tx) => {
+      await tx.tenant.update({
+        where: { id: tenant.id },
+        data: { profession: data.profession, template: data.template, onboardingCompleted: true, published: true, approvedAt: new Date() },
+      });
+      await tx.profile.update({
+        where: { id_tenantId: { id: "profile", tenantId: tenant.id } },
+        data: { title: data.title, heroTagline: data.heroTagline, bio: data.bio },
+      });
+      await tx.project.create({
+        data: { tenantId: tenant.id, title: example.projectTitle, summary: example.projectSummary, tags: [data.profession], order: 0 },
+      });
+    });
+    revalidatePath("/dashboard");
+    return { ok: true };
+  } catch (err) {
     return { ok: false, error: message(err) };
   }
 }
@@ -218,6 +256,8 @@ export async function createTenant(raw: unknown): Promise<ActionResult> {
         name: data.name,
         title: data.title,
         plan: data.plan,
+        trialStartedAt: new Date(),
+        trialEndsAt: trialEndDate(),
         published: data.published,
         approvedAt: data.approved ? new Date() : null,
         owner: {

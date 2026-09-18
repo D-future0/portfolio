@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { logger } from "@/lib/logger";
 
 export type TenantSummary = {
   id: string;
@@ -25,7 +26,8 @@ export async function getProfile(tenantId: string) {
     const existing = await db.profile.findUnique({ where: { id_tenantId: { id: "profile", tenantId } } });
     if (existing) return existing;
     return await db.profile.create({ data: { id: "profile", tenantId } });
-  } catch {
+  } catch (error) {
+    logger.warn("Profile lookup failed", { tenantId, error: error instanceof Error ? error.message : String(error) });
     return null;
   }
 }
@@ -36,7 +38,8 @@ export async function getExperiences(tenantId: string) {
       where: { tenantId },
       orderBy: { order: "asc" },
     });
-  } catch {
+  } catch (error) {
+    logger.warn("Experience lookup failed", { tenantId, error: error instanceof Error ? error.message : String(error) });
     return [];
   }
 }
@@ -47,7 +50,8 @@ export async function getProjects(tenantId: string) {
       where: { tenantId },
       orderBy: { order: "asc" },
     });
-  } catch {
+  } catch (error) {
+    logger.warn("Project lookup failed", { tenantId, error: error instanceof Error ? error.message : String(error) });
     return [];
   }
 }
@@ -58,7 +62,8 @@ export async function getCertifications(tenantId: string) {
       where: { tenantId },
       orderBy: { order: "asc" },
     });
-  } catch {
+  } catch (error) {
+    logger.warn("Certification lookup failed", { tenantId, error: error instanceof Error ? error.message : String(error) });
     return [];
   }
 }
@@ -73,9 +78,13 @@ export async function getTenantBySlug(slug: string) {
         experiences: { orderBy: { order: "asc" } },
         projects: { orderBy: { order: "asc" } },
         certifications: { orderBy: { order: "asc" } },
+        testimonials: { where: { published: true }, orderBy: { order: "asc" } },
+        services: { where: { published: true }, orderBy: { order: "asc" } },
+        caseStudies: { where: { published: true }, orderBy: { createdAt: "desc" } },
       },
     });
-  } catch {
+  } catch (error) {
+    logger.warn("Tenant lookup failed", { slug, error: error instanceof Error ? error.message : String(error) });
     return null;
   }
 }

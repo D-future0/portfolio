@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 
 // Paystack webhook endpoint. Paystack is the source of truth for billing;
 // we mirror events here so feature-gating works without an API call per page.
@@ -22,6 +22,10 @@ export async function POST(request: Request) {
   const data: any = event.data;
 
   try {
+    const eventId = `${event.event}:${data.id ?? data.subscription_code ?? createHash("sha256").update(rawBody).digest("hex")}`;
+    const existing = await db.billingEvent.findUnique({ where: { eventId } });
+    if (existing) return NextResponse.json({ ok: true, duplicate: true });
+    await db.billingEvent.create({ data: { eventId, eventType, payload: event, status: "received" } });
     const code: string | undefined = data.subscription_code ?? data.code;
 
     if (
@@ -39,6 +43,7 @@ export async function POST(request: Request) {
               trialEndsAt: data.next_payment_date ? new Date(data.next_payment_date) : tenant.trialEndsAt,
             },
           });
+          await db.subscription.updateMany({ where: { paystackSubscriptionCode: code }, data: { status: data.status ?? "active", endsAt: data.next_payment_date ? new Date(data.next_payment_date) : null } });
         }
       }
     } else if (eventType === "subscription.disable") {
@@ -49,9 +54,11 @@ export async function POST(request: Request) {
             where: { id: tenant.id },
             data: { paystackSubscriptionStatus: "canceled" },
           });
+          await db.subscription.updateMany({ where: { paystackSubscriptionCode: code }, data: { status: "canceled", endsAt: new Date() } });
         }
       }
     }
+    await db.billingEvent.update({ where: { eventId }, data: { status: "processed", processedAt: new Date() } });
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error("Paystack webhook handling failed:", err);

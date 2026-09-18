@@ -3,8 +3,11 @@ import { Resend } from "resend";
 import { contactFormSchema } from "@/lib/validation";
 import { getProfile } from "@/lib/content";
 import { db } from "@/lib/db";
+import { clientKey, limitedResponse, rateLimit } from "@/lib/rate-limit";
 
 export async function POST(request: Request) {
+  const limit = await rateLimit(clientKey(request, "contact"), 5, 15 * 60 * 1000);
+  if (!limit.allowed) return limitedResponse(limit.resetAt);
   let body: unknown;
   try {
     body = await request.json();
@@ -25,26 +28,26 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true });
   }
 
-  const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) {
-    console.error("RESEND_API_KEY is not set — cannot send contact email.");
-    return NextResponse.json(
-      { error: "Messaging is not configured yet. Please email directly." },
-      { status: 503 },
-    );
-  }
-
   const tenantSlug = request.headers.get("x-portfolio-slug");
   if (!tenantSlug) {
     return NextResponse.json({ error: "Portfolio context is required." }, { status: 400 });
   }
   const tenant = await db.tenant.findUnique({ where: { slug: tenantSlug } });
-  const profile = tenant ? await getProfile(tenant.id) : null;
+  if (!tenant) {
+    return NextResponse.json({ error: "Portfolio not found." }, { status: 404 });
+  }
+  const profile = await getProfile(tenant.id);
   if (!profile) {
     return NextResponse.json({ error: "Portfolio not found." }, { status: 404 });
   }
-  const resend = new Resend(apiKey);
   const { name, email, message } = parsed.data;
+
+  await db.contactMessage.create({ data: { tenantId: tenant.id, name, email, message } });
+  await db.analyticsEvent.create({ data: { tenantId: tenant.id, type: "contact", path: `/u/${tenantSlug}` } });
+
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) return NextResponse.json({ ok: true, inboxOnly: true });
+  const resend = new Resend(apiKey);
 
   try {
     await resend.emails.send({

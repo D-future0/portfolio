@@ -24,22 +24,22 @@ async function main() {
   const adminHash = await bcrypt.hash(adminPassword, 12);
   const admin = await db.user.upsert({
     where: { email: adminEmail },
-    create: { email: adminEmail, passwordHash: adminHash, name: "Admin", role: "ADMIN" },
-    update: { passwordHash: adminHash, role: "ADMIN" },
+    create: { email: adminEmail, passwordHash: adminHash, name: "Admin", role: "ADMIN", emailVerified: new Date() },
+    update: { passwordHash: adminHash, role: "ADMIN", emailVerified: new Date() },
   });
 
   // 2. Demo tenant + owner. The existing singleton Profile and any
   //    Experience/Project/Certification rows are migrated into this tenant.
   const demoOwner = await db.user.upsert({
     where: { email: DEMO_OWNER_EMAIL },
-    create: { email: DEMO_OWNER_EMAIL, passwordHash: await bcrypt.hash(DEMO_PASSWORD, 12), name: "Demo Portfolio", role: "TENANT" },
-    update: { role: "TENANT" },
+    create: { email: DEMO_OWNER_EMAIL, passwordHash: await bcrypt.hash(DEMO_PASSWORD, 12), name: "Demo Portfolio", role: "TENANT", emailVerified: new Date() },
+    update: { role: "TENANT", emailVerified: new Date() },
   });
 
   const demoTenant = await db.tenant.upsert({
     where: { slug: DEMO_TENANT_SLUG },
     create: { slug: DEMO_TENANT_SLUG, name: "Demo Portfolio", title: "Independent Professional", published: true, approvedAt: new Date(), trialEndsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), ownerId: demoOwner.id },
-    update: { ownerId: demoOwner.id, published: true, approvedAt: new Date() },
+    update: { ownerId: demoOwner.id, published: true, approvedAt: new Date(), onboardingCompleted: true, trialStartedAt: new Date(), trialEndsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) },
   });
 
   // 3. Migrate the legacy singleton Profile (id "profile") into the demo tenant.
@@ -79,9 +79,14 @@ async function main() {
     update: {},
   });
   await db.plan.upsert({
-    where: { key: "pro" },
-    create: { key: "pro", amount: 0, interval: "monthly", currency: "NGN" },
-    update: {},
+    where: { key: "pro-monthly" },
+    create: { key: "pro-monthly", amount: Number(process.env.PRO_MONTHLY_AMOUNT ?? 500000), interval: "monthly", currency: process.env.PRO_CURRENCY ?? "NGN", paystackPlanCode: process.env.PAYSTACK_PRO_MONTHLY_PLAN_CODE },
+    update: { amount: Number(process.env.PRO_MONTHLY_AMOUNT ?? 500000), paystackPlanCode: process.env.PAYSTACK_PRO_MONTHLY_PLAN_CODE },
+  });
+  await db.plan.upsert({
+    where: { key: "pro-annual" },
+    create: { key: "pro-annual", amount: Number(process.env.PRO_ANNUAL_AMOUNT ?? 5000000), interval: "annually", currency: process.env.PRO_CURRENCY ?? "NGN", paystackPlanCode: process.env.PAYSTACK_PRO_ANNUAL_PLAN_CODE },
+    update: { amount: Number(process.env.PRO_ANNUAL_AMOUNT ?? 5000000), paystackPlanCode: process.env.PAYSTACK_PRO_ANNUAL_PLAN_CODE },
   });
 
   console.log(`Admin superuser ready: ${admin.email}`);

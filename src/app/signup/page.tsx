@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
-import { signIn } from "next-auth/react";
 import { registerTenant } from "@/lib/actions";
 
 export default function SignupPage() {
@@ -28,17 +27,7 @@ export default function SignupPage() {
       return;
     }
 
-    const login = await signIn("credentials", {
-      email: form.get("email"),
-      password: form.get("password"),
-      redirect: false,
-    });
-    if (login?.error) {
-      setError("Your account was created. Please sign in.");
-      setPending(false);
-      return;
-    }
-    window.location.href = "/dashboard";
+    window.location.href = "/verify-email";
   }
 
   return (

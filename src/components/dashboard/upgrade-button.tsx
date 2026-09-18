@@ -10,16 +10,12 @@ import { useRouter } from "next/navigation";
 // tokenizing transaction, verify it, then create the subscription.
 export function UpgradeButton({
   tenantId,
-  planCode,
-  amount,
-  currency,
-  email,
+  planKey,
+  label,
 }: {
   tenantId: string;
-  planCode: string;
-  amount: number;
-  currency: string;
-  email: string;
+  planKey: string;
+  label: string;
 }) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -35,6 +31,7 @@ export function UpgradeButton({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           tenantId,
+          planKey,
         }),
       });
       const init = await initRes.json();
@@ -57,7 +54,7 @@ export function UpgradeButton({
         onClick={upgrade}
         className="w-fit border border-ink bg-ink px-5 py-2.5 text-sm text-paper transition-colors hover:bg-transparent hover:text-ink disabled:opacity-50"
       >
-        {pending ? "Redirecting to Paystack…" : "Upgrade to Pro"}
+        {pending ? "Redirecting to Paystack…" : label}
       </button>
       {error ? <p className="text-sm text-red-700">{error}</p> : null}
     </div>

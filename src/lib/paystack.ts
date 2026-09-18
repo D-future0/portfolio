@@ -102,6 +102,7 @@ export type CreateSubscriptionData = {
   customer: { customer_code: string };
   plan: { plan_code: string };
   next_payment_date: string | null;
+  email_token?: string;
 };
 
 // 30-day free trial: first debit is 30 days from now.

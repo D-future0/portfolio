@@ -3,6 +3,8 @@ import { auth } from "@/lib/auth";
 import { getTenantByOwnerId } from "@/lib/content";
 import { UpgradeButton } from "@/components/dashboard/upgrade-button";
 import { PublishToggle } from "@/components/dashboard/publish-toggle";
+import { db } from "@/lib/db";
+import { CancelSubscriptionButton } from "@/components/dashboard/cancel-subscription-button";
 
 export const revalidate = 0;
 
@@ -18,6 +20,11 @@ export default async function DashboardBillingPage({
 
   const tenant = await getTenantByOwnerId(session.user.id);
   if (!tenant) redirect("/admin/login");
+  const [plans, subscriptions, billingEvents] = await Promise.all([
+    db.plan.findMany({ where: { key: { startsWith: "pro-" } }, orderBy: { amount: "asc" } }),
+    db.subscription.findMany({ where: { tenantId: tenant.id }, orderBy: { createdAt: "desc" } }),
+    db.billingEvent.findMany({ where: { tenantId: tenant.id }, orderBy: { createdAt: "desc" }, take: 20 }),
+  ]);
 
   const params = await searchParams;
   const status = typeof params.status === "string" ? params.status : undefined;
@@ -41,6 +48,7 @@ export default async function DashboardBillingPage({
             tenantId: tenant.id,
             customer: session.user.email,
             plan: "pro",
+            planKey: verify.metadata?.planKey,
             authorization: verify.authorizationCode,
           }),
         });
@@ -77,17 +85,22 @@ export default async function DashboardBillingPage({
             ) : null}
           </div>
           {tenant.plan === "FREE" ? (
-            <UpgradeButton
-              tenantId={tenant.id}
-              planCode="pro"
-              amount={5000}
-              currency="NGN"
-              email={session.user.email!}
-            />
+            <div className="flex flex-wrap gap-3">
+              {plans.map((plan) => <UpgradeButton key={plan.key} tenantId={tenant.id} planKey={plan.key} label={`Choose ${plan.interval}`} />)}
+            </div>
           ) : (
             <span className="text-sm text-ink-soft">Active</span>
           )}
         </div>
+        {tenant.plan === "PRO" ? <div className="mt-5"><CancelSubscriptionButton /></div> : null}
+      </section>
+
+      <section className="border-t border-line pt-6">
+        <h2 className="font-display text-lg italic text-ink">Billing history</h2>
+        <ul className="mt-4 divide-y divide-line border-t border-line text-sm">
+          {subscriptions.map((subscription) => <li key={subscription.id} className="flex justify-between py-3"><span>{subscription.planCode}</span><span className="text-ink-soft">{subscription.status} · {subscription.createdAt.toLocaleDateString()}</span></li>)}
+          {billingEvents.map((event) => <li key={event.id} className="flex justify-between py-3"><span>{event.eventType}</span><span className="text-ink-soft">{event.status} · {event.createdAt.toLocaleDateString()}</span></li>)}
+        </ul>
       </section>
 
       <PublishToggle tenantId={tenant.id} slug={tenant.slug} published={tenant.published} />

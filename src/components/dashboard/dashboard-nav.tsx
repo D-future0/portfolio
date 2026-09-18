@@ -11,6 +11,8 @@ const LINKS = [
   { href: "/dashboard/certifications", label: "Certifications" },
   { href: "/dashboard/theme", label: "Theme" },
   { href: "/dashboard/billing", label: "Billing" },
+  { href: "/dashboard/inbox", label: "Inbox" },
+  { href: "/dashboard/analytics", label: "Analytics" },
 ];
 
 export function DashboardNav({

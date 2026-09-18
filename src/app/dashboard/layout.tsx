@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { getTenantByOwnerId } from "@/lib/content";
 import { DashboardNav } from "@/components/dashboard/dashboard-nav";
+import { trialDaysRemaining } from "@/lib/trial";
 
 export default async function DashboardLayout({
   children,
@@ -20,6 +21,9 @@ export default async function DashboardLayout({
   if (!tenant) {
     redirect("/admin/login");
   }
+  if (!tenant.onboardingCompleted) {
+    redirect("/onboarding");
+  }
 
   return (
     <div className="min-h-screen bg-paper">
@@ -31,6 +35,14 @@ export default async function DashboardLayout({
           trialEndsAt: tenant.trialEndsAt,
         }}
       />
+      {tenant.plan !== "PRO" ? (
+        <div className="border-b border-line bg-paper-raised px-6 py-3 text-center text-sm text-ink-soft">
+          {trialDaysRemaining(tenant.trialEndsAt) > 0
+            ? `${trialDaysRemaining(tenant.trialEndsAt)} days left in your free trial.`
+            : "Your free trial has ended. Your content is safe, but premium features are paused."}{" "}
+          <a href="/dashboard/billing" className="text-ink underline underline-offset-4">View billing</a>
+        </div>
+      ) : null}
       <main className="mx-auto max-w-3xl px-6 py-10">{children}</main>
     </div>
   );

@@ -4,6 +4,8 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import bcrypt from "bcryptjs";
 import { db } from "@/lib/db";
 import { loginSchema } from "@/lib/validation";
+import { clientKey, rateLimit } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(db),
@@ -18,7 +20,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
       },
-      authorize: async (raw) => {
+      authorize: async (raw, request) => {
+        const limit = await rateLimit(clientKey(request, "login"), 10, 15 * 60 * 1000);
+        if (!limit.allowed) {
+          logger.warn("Login rate limit exceeded", { scope: "login" });
+          throw new Error("Too many login attempts. Try again later.");
+        }
         const parsed = loginSchema.safeParse(raw);
         if (!parsed.success) return null;
         const { email, password } = parsed.data;
@@ -28,6 +35,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         const valid = await bcrypt.compare(password, user.passwordHash);
         if (!valid) return null;
+        if (user.role === "TENANT" && !user.emailVerified) return null;
 
         // Tenant owners resolve their tenant via the Tenant.ownerId link
         // (User has no tenantId column — the relation is the other way).

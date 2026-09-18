@@ -2,8 +2,11 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { createSubscription, fetchSubscription } from "@/lib/paystack";
 import { auth } from "@/lib/auth";
+import { clientKey, limitedResponse, rateLimit } from "@/lib/rate-limit";
 
 export async function POST(request: Request) {
+  const limit = await rateLimit(clientKey(request, "payment-subscribe"), 5, 60 * 60 * 1000);
+  if (!limit.allowed) return limitedResponse(limit.resetAt);
   const session = await auth();
   if (!session?.user?.tenantId || session.user.role !== "TENANT") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -15,13 +18,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid request." }, { status: 400 });
   }
 
-  const { authorization, startDate } = body as {
-    plan?: string;
+  const { authorization, startDate, planKey } = body as {
+    planKey?: string;
     authorization?: string;
     startDate?: string;
   };
 
-  if (!authorization) {
+  if (!authorization || !planKey) {
     return NextResponse.json(
       { error: "tenantId, customer, plan, and authorization are required." },
       { status: 400 },
@@ -37,9 +40,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Workspace already has a subscription." }, { status: 409 });
     }
 
-    const plan = process.env.PAYSTACK_PRO_PLAN_CODE;
-    if (!plan) return NextResponse.json({ error: "Billing is not configured." }, { status: 503 });
-    const sub = await createSubscription({ customer: session.user.email!, plan, authorization, startDate });
+    const selectedPlan = await db.plan.findUnique({ where: { key: planKey } });
+    if (!selectedPlan?.paystackPlanCode) return NextResponse.json({ error: "Billing is not configured." }, { status: 503 });
+    const sub = await createSubscription({ customer: session.user.email!, plan: selectedPlan.paystackPlanCode, authorization, startDate });
 
     const trialEndsAt = new Date();
     trialEndsAt.setDate(trialEndsAt.getDate() + 30);
@@ -49,8 +52,9 @@ export async function POST(request: Request) {
         tenantId: tenant.id,
         paystackCustomerCode: sub.customer.customer_code,
         paystackSubscriptionCode: sub.subscription_code,
+        paystackEmailToken: sub.email_token,
         paystackAuthorizationCode: authorization,
-        planCode: plan,
+        planCode: selectedPlan.key,
         status: sub.status,
         trialEndsAt,
       },

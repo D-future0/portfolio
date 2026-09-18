@@ -4,11 +4,13 @@ import { CalendlyEmbed } from "@/components/calendly-embed";
 
 export function Contact({
   slug,
+  resumeUrl,
   calendlyUrl,
   linkedinUrl,
   twitterUrl,
 }: {
   slug: string;
+  resumeUrl?: string | null;
   calendlyUrl?: string | null;
   linkedinUrl?: string | null;
   twitterUrl?: string | null;
@@ -28,6 +30,7 @@ export function Contact({
                 book time directly on the calendar.
               </p>
               <ContactForm slug={slug} />
+              {resumeUrl ? <a href={resumeUrl} download className="mt-5 inline-block text-sm text-ink underline underline-offset-4">Download CV / resume</a> : null}
               {(linkedinUrl || twitterUrl) && (
                 <div className="mt-8 flex gap-4 text-sm text-ink-soft">
                   {linkedinUrl ? (

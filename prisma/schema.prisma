@@ -25,8 +25,28 @@ model User {
 
   accounts      Account[]
   sessions      Session[]
+  authTokens    AuthToken[]
 
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AuthToken {
+  id String @id @default(cuid())
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  purpose String
+  tokenHash String @unique
+  expiresAt DateTime
+  usedAt DateTime?
+  createdAt DateTime @default(now())
+  @@index([userId, purpose])
+}
+
+model RateLimitBucket {
+  key String @id
+  count Int @default(0)
+  resetAt DateTime
   updatedAt DateTime @updatedAt
 }
 
@@ -78,6 +98,12 @@ model Tenant {
   slug  String @unique
   name  String
   title String  @default("Independent Professional")
+  seoTitle String?
+  seoDescription String?
+  socialImageUrl String?
+  profession String @default("consultant")
+  template   String @default("editorial")
+  onboardingCompleted Boolean @default(false)
 
   // Billing (Paystack). Forward-looking — nullable until paid.
   plan              PlanTier  @default(FREE)
@@ -85,7 +111,12 @@ model Tenant {
   paystackPlanCode    String?
   paystackSubscriptionCode String?
   paystackSubscriptionStatus String?
+  trialStartedAt    DateTime?
   trialEndsAt       DateTime?
+  trialReminder14SentAt DateTime?
+  trialReminder7SentAt  DateTime?
+  trialReminder3SentAt  DateTime?
+  trialReminder1SentAt  DateTime?
   paystackWebhookLast DateTime?
 
   // Publish control. Edit-in-place: what the owner saves is live.
@@ -107,6 +138,13 @@ model Tenant {
   projects       Project[]
   certifications Certification[]
   subscriptions  Subscription[]
+  billingEvents  BillingEvent[]
+  testimonials   Testimonial[]
+  services       Service[]
+  caseStudies    CaseStudy[]
+  contactMessages ContactMessage[]
+  customDomains  CustomDomain[]
+  analyticsEvents AnalyticsEvent[]
 }
 
 // --- Site content (all tenant-scoped) ---
@@ -117,7 +155,7 @@ model Profile {
   // Hero
   name       String  @default("Your Name")
   title      String  @default("Independent Professional")
-  heroTagline String @default("Numbers you can trust, insight you can act on.")
+  heroTagline String @default("Ideas worth making visible.")
   heroImageUrl String?
 
   // About
@@ -210,6 +248,88 @@ model Certification {
   @@unique([id, tenantId])
 }
 
+model Testimonial {
+  id String @id @default(cuid())
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenantId String
+  name String
+  role String?
+  company String?
+  quote String
+  order Int @default(0)
+  published Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([tenantId, order])
+}
+
+model Service {
+  id String @id @default(cuid())
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenantId String
+  name String
+  description String
+  priceLabel String?
+  order Int @default(0)
+  published Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([tenantId, order])
+}
+
+model CaseStudy {
+  id String @id @default(cuid())
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenantId String
+  slug String
+  title String
+  summary String
+  challenge String?
+  approach String?
+  outcome String?
+  imageUrl String?
+  published Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([tenantId, slug])
+}
+
+model ContactMessage {
+  id String @id @default(cuid())
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenantId String
+  name String
+  email String
+  message String
+  readAt DateTime?
+  createdAt DateTime @default(now())
+  @@index([tenantId, createdAt])
+}
+
+model CustomDomain {
+  id String @id @default(cuid())
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenantId String
+  hostname String @unique
+  verifiedAt DateTime?
+  verificationToken String
+  createdAt DateTime @default(now())
+}
+
+model AnalyticsEvent {
+  id String @id @default(cuid())
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenantId String
+  type String
+  path String?
+  target String?
+  projectId String?
+  sessionHash String?
+  createdAt DateTime @default(now())
+  @@index([tenantId, type, createdAt])
+  @@index([tenantId, projectId, createdAt])
+}
+
 // --- Billing state (Paystack). Kept in our DB so the app can gate features
 // without re-fetching Paystack on every request. Paystack is the source of
 // truth; these rows are the cache. ---
@@ -240,6 +360,7 @@ model Subscription {
   paystackCustomerCode       String?
   paystackSubscriptionCode   String @unique
   paystackAuthorizationCode  String?
+  paystackEmailToken         String?
   planCode                   String
   status                     String // active, trial, canceled, expired, etc.
   startsAt                   DateTime?
@@ -248,4 +369,17 @@ model Subscription {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model BillingEvent {
+  id String @id @default(cuid())
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  tenantId String?
+  eventId String @unique
+  eventType String
+  status String @default("received")
+  payload Json
+  processedAt DateTime?
+  createdAt DateTime @default(now())
+  @@index([tenantId, createdAt])
 }

@@ -45,6 +45,7 @@ function LoginForm() {
             className="border border-line bg-paper-raised px-3 py-2 outline-none focus-visible:border-accent"
           />
         </label>
+        <Link href="/forgot-password" className="text-sm text-ink-soft underline">Forgot password?</Link>
         <label className="flex flex-col gap-1.5 text-sm">
           Password
           <input

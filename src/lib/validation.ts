@@ -5,6 +5,9 @@ export const loginSchema = z.object({
   password: z.string().min(8),
 });
 
+export const passwordResetRequestSchema = z.object({ email: z.string().email() });
+export const passwordResetSchema = z.object({ token: z.string().min(32), password: z.string().min(8) });
+
 // Slugs: lowercase letters, digits, hyphens. 3-32 chars. No leading/trailing
 // hyphen. Reserves "admin" so it never collides with the login route.
 export const slugSchema = z
@@ -23,6 +26,14 @@ export const signupSchema = z.object({
   password: z.string().min(8, "Password must be at least 8 characters"),
   workspaceName: z.string().min(1, "Enter a workspace name").max(160),
   slug: slugSchema,
+});
+
+export const onboardingSchema = z.object({
+  profession: z.enum(["consultant", "designer", "developer", "coach", "lawyer", "agency", "creator"]),
+  template: z.enum(["editorial", "studio", "signal"]),
+  title: z.string().min(1).max(160),
+  heroTagline: z.string().min(1).max(240),
+  bio: z.string().min(1).max(4000),
 });
 
 // Admin: create a tenant + its owner account in one shot.

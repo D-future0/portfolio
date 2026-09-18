@@ -8,6 +8,8 @@ import { Certifications } from "@/components/sections/certifications";
 import { Contact } from "@/components/sections/contact";
 import { Footer } from "@/components/sections/footer";
 import { getTenantBySlug } from "@/lib/content";
+import { AnalyticsView } from "@/components/analytics-view";
+import { GrowthSections } from "@/components/sections/growth";
 
 export const revalidate = 60;
 
@@ -21,8 +23,13 @@ export async function generateMetadata({
   if (!tenant) return { title: "Portfolio not found" };
   const p = tenant.profile;
   return {
-    title: `${p?.name ?? tenant.name} — ${p?.title ?? tenant.title}`,
-    description: p?.heroTagline ?? "",
+    title: tenant.seoTitle ?? `${p?.name ?? tenant.name} — ${p?.title ?? tenant.title}`,
+    description: tenant.seoDescription ?? p?.heroTagline ?? "",
+    openGraph: {
+      title: tenant.seoTitle ?? `${p?.name ?? tenant.name} — ${p?.title ?? tenant.title}`,
+      description: tenant.seoDescription ?? p?.heroTagline ?? "",
+      images: [tenant.socialImageUrl ?? `/u/${slug}/opengraph-image`],
+    },
   };
 }
 
@@ -43,7 +50,17 @@ export default async function TenantPage({
   const p = tenant.profile;
 
   return (
-    <>
+    <div className="portfolio-shell" data-template={tenant.template}>
+      <AnalyticsView tenantId={tenant.id} path={`/u/${slug}`} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": tenant.profession === "agency" ? "Organization" : "ProfessionalService",
+        name: p?.name ?? tenant.name,
+        description: tenant.seoDescription ?? p?.heroTagline ?? "",
+        url: `${process.env.AUTH_URL ?? process.env.NEXTAUTH_URL ?? "http://localhost:3000"}/u/${slug}`,
+        email: p?.contactEmail,
+        image: p?.heroImageUrl,
+      }).replace(/</g, "\\u003c") }} />
       <Nav name={p?.name ?? tenant.name} />
       <main>
         <Hero
@@ -62,14 +79,16 @@ export default async function TenantPage({
         <Experience items={tenant.experiences} />
         <Projects items={tenant.projects} />
         <Certifications items={tenant.certifications} />
+        <GrowthSections slug={slug} services={tenant.services} testimonials={tenant.testimonials} caseStudies={tenant.caseStudies} />
         <Contact
           slug={slug}
+          resumeUrl={p?.resumeUrl ?? null}
           calendlyUrl={p?.calendlyUrl ?? null}
           linkedinUrl={p?.linkedinUrl ?? null}
           twitterUrl={p?.twitterUrl ?? null}
         />
       </main>
       <Footer name={p?.name ?? tenant.name} />
-    </>
+    </div>
   );
 }
