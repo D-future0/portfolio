@@ -54,10 +54,10 @@ export function ExperienceManager({
           <li key={item.id} className="flex items-center justify-between py-3">
             <div>
               <p className="text-ink">
-                {item.role} · {item.company}
+                {item.role} Â· {item.company}
               </p>
               <p className="text-xs text-ink-soft">
-                {item.startDate} — {item.current ? "Present" : item.endDate}
+                {item.startDate} â€” {item.current ? "Present" : item.endDate}
               </p>
             </div>
             <div className="flex gap-3 text-sm">
@@ -220,7 +220,7 @@ function ExperienceFormModal({
             disabled={pending}
             className="border border-ink bg-ink px-4 py-2 text-sm text-paper hover:bg-transparent hover:text-ink disabled:opacity-50"
           >
-            {pending ? "Saving…" : "Save"}
+            {pending ? "Savingâ€¦" : "Save"}
           </button>
           <button type="button" onClick={onClose} className="text-sm text-ink-soft hover:text-ink">
             Cancel

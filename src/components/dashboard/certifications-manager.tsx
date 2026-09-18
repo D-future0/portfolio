@@ -176,7 +176,7 @@ function CertFormModal({
             disabled={pending}
             className="border border-ink bg-ink px-4 py-2 text-sm text-paper hover:bg-transparent hover:text-ink disabled:opacity-50"
           >
-            {pending ? "Saving…" : "Save"}
+            {pending ? "Savingâ€¦" : "Save"}
           </button>
           <button type="button" onClick={onClose} className="text-sm text-ink-soft hover:text-ink">
             Cancel
