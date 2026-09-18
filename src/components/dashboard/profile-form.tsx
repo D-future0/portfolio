@@ -4,32 +4,36 @@ import { useState, useTransition } from "react";
 import { updateProfile } from "@/lib/actions";
 import { ImageUploadField } from "@/components/admin/image-upload-field";
 
-type Profile = {
-  name: string;
-  title: string;
-  heroTagline: string;
-  heroImageUrl: string | null;
-  bio: string;
-  yearsExperience: number;
-  clientsServed: number;
-  projectsDone: number;
-  contactEmail: string;
-  phone: string | null;
-  location: string | null;
-  calendlyUrl: string | null;
-  linkedinUrl: string | null;
-  twitterUrl: string | null;
-  resumeUrl: string | null;
-  accentColor: string;
+export type ProfileFormProps = {
+  tenantId: string;
+  slug: string;
+  profile: {
+    name: string;
+    title: string;
+    heroTagline: string;
+    heroImageUrl: string | null;
+    bio: string;
+    yearsExperience: number;
+    clientsServed: number;
+    projectsDone: number;
+    contactEmail: string;
+    phone: string | null;
+    location: string | null;
+    calendlyUrl: string | null;
+    linkedinUrl: string | null;
+    twitterUrl: string | null;
+    resumeUrl: string | null;
+    accentColor: string;
+  };
 };
 
-export function ProfileForm({ profile }: { profile: Profile }) {
+export function ProfileForm({ tenantId, slug, profile }: ProfileFormProps) {
   const [form, setForm] = useState(profile);
-  const [pending, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
   const [status, setStatus] = useState<"idle" | "saved" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
 
-  function set<K extends keyof Profile>(key: K, value: Profile[K]) {
+  function set<K extends keyof ProfileFormProps["profile"]>(key: K, value: ProfileFormProps["profile"][K]) {
     setForm((f) => ({ ...f, [key]: value }));
   }
 
@@ -37,7 +41,7 @@ export function ProfileForm({ profile }: { profile: Profile }) {
     e.preventDefault();
     setStatus("idle");
     startTransition(async () => {
-      const result = await updateProfile(form);
+      const result = await updateProfile({ tenantId, ...form });
       if (result.ok) {
         setStatus("saved");
       } else {
@@ -127,10 +131,9 @@ export function ProfileForm({ profile }: { profile: Profile }) {
       <div className="flex items-center gap-4">
         <button
           type="submit"
-          disabled={pending}
           className="w-fit border border-ink bg-ink px-5 py-2.5 text-sm text-paper transition-colors hover:bg-transparent hover:text-ink disabled:opacity-50"
         >
-          {pending ? "Saving…" : "Save changes"}
+          Save changes
         </button>
         {status === "saved" ? (
           <span className="text-sm text-ink-soft">Saved.</span>
@@ -143,18 +146,10 @@ export function ProfileForm({ profile }: { profile: Profile }) {
   );
 }
 
-function Section({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <fieldset className="flex flex-col gap-4 border-t border-line pt-6">
-      <legend className="mb-1 font-display text-sm italic text-ink-soft">
-        {title}
-      </legend>
+      <legend className="mb-1 font-display text-sm italic text-ink-soft">{title}</legend>
       {children}
     </fieldset>
   );

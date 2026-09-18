@@ -3,11 +3,11 @@
 import { useState, useTransition } from "react";
 import { upsertExperience, deleteExperience } from "@/lib/actions";
 
-type Experience = {
+export type Experience = {
   id: string;
   company: string;
   role: string;
-  startDate: string; // yyyy-mm-dd
+  startDate: string;
   endDate: string | null;
   current: boolean;
   location: string | null;
@@ -27,7 +27,13 @@ const EMPTY: Experience = {
   order: 0,
 };
 
-export function ExperienceManager({ items }: { items: Experience[] }) {
+export function ExperienceManager({
+  tenantId,
+  items,
+}: {
+  tenantId: string;
+  items: Experience[];
+}) {
   const [list, setList] = useState(items);
   const [editing, setEditing] = useState<Experience | null>(null);
 
@@ -48,10 +54,10 @@ export function ExperienceManager({ items }: { items: Experience[] }) {
           <li key={item.id} className="flex items-center justify-between py-3">
             <div>
               <p className="text-ink">
-                {item.role} Â· {item.company}
+                {item.role} · {item.company}
               </p>
               <p className="text-xs text-ink-soft">
-                {item.startDate} â€” {item.current ? "Present" : item.endDate}
+                {item.startDate} — {item.current ? "Present" : item.endDate}
               </p>
             </div>
             <div className="flex gap-3 text-sm">
@@ -59,6 +65,7 @@ export function ExperienceManager({ items }: { items: Experience[] }) {
                 Edit
               </button>
               <DeleteButton
+                tenantId={tenantId}
                 id={item.id}
                 onDeleted={() => setList((l) => l.filter((x) => x.id !== item.id))}
               />
@@ -72,14 +79,13 @@ export function ExperienceManager({ items }: { items: Experience[] }) {
 
       {editing ? (
         <ExperienceFormModal
+          tenantId={tenantId}
           initial={editing}
           onClose={() => setEditing(null)}
           onSaved={(saved) => {
             setList((l) => {
               const exists = l.some((x) => x.id === saved.id);
-              return exists
-                ? l.map((x) => (x.id === saved.id ? saved : x))
-                : [...l, saved];
+              return exists ? l.map((x) => (x.id === saved.id ? saved : x)) : [...l, saved];
             });
             setEditing(null);
           }}
@@ -89,7 +95,15 @@ export function ExperienceManager({ items }: { items: Experience[] }) {
   );
 }
 
-function DeleteButton({ id, onDeleted }: { id: string; onDeleted: () => void }) {
+function DeleteButton({
+  tenantId,
+  id,
+  onDeleted,
+}: {
+  tenantId: string;
+  id: string;
+  onDeleted: () => void;
+}) {
   const [pending, startTransition] = useTransition();
   return (
     <button
@@ -97,7 +111,7 @@ function DeleteButton({ id, onDeleted }: { id: string; onDeleted: () => void }) 
       onClick={() => {
         if (!confirm("Delete this role?")) return;
         startTransition(async () => {
-          const res = await deleteExperience(id);
+          const res = await deleteExperience(id, tenantId);
           if (res.ok) onDeleted();
         });
       }}
@@ -109,10 +123,12 @@ function DeleteButton({ id, onDeleted }: { id: string; onDeleted: () => void }) 
 }
 
 function ExperienceFormModal({
+  tenantId,
   initial,
   onClose,
   onSaved,
 }: {
+  tenantId: string;
   initial: Experience;
   onClose: () => void;
   onSaved: (item: Experience) => void;
@@ -130,6 +146,7 @@ function ExperienceFormModal({
     startTransition(async () => {
       const result = await upsertExperience({
         ...form,
+        tenantId,
         id: form.id || undefined,
         bullets,
         endDate: form.current ? null : form.endDate,
@@ -203,7 +220,7 @@ function ExperienceFormModal({
             disabled={pending}
             className="border border-ink bg-ink px-4 py-2 text-sm text-paper hover:bg-transparent hover:text-ink disabled:opacity-50"
           >
-            {pending ? "Savingâ€¦" : "Save"}
+            {pending ? "Saving…" : "Save"}
           </button>
           <button type="button" onClick={onClose} className="text-sm text-ink-soft hover:text-ink">
             Cancel

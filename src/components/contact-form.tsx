@@ -4,7 +4,7 @@ import { useState, type FormEvent } from "react";
 
 type Status = "idle" | "loading" | "success" | "error";
 
-export function ContactForm() {
+export function ContactForm({ slug }: { slug: string }) {
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState<string | null>(null);
 
@@ -19,7 +19,7 @@ export function ContactForm() {
     try {
       const res = await fetch("/api/contact", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "x-portfolio-slug": slug },
         body: JSON.stringify(data),
       });
       if (!res.ok) {

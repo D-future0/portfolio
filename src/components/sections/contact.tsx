@@ -3,10 +3,12 @@ import { ContactForm } from "@/components/contact-form";
 import { CalendlyEmbed } from "@/components/calendly-embed";
 
 export function Contact({
+  slug,
   calendlyUrl,
   linkedinUrl,
   twitterUrl,
 }: {
+  slug: string;
   calendlyUrl?: string | null;
   linkedinUrl?: string | null;
   twitterUrl?: string | null;
@@ -25,7 +27,7 @@ export function Contact({
                 Have a question or want to work together? Send a message, or
                 book time directly on the calendar.
               </p>
-              <ContactForm />
+              <ContactForm slug={slug} />
               {(linkedinUrl || twitterUrl) && (
                 <div className="mt-8 flex gap-4 text-sm text-ink-soft">
                   {linkedinUrl ? (

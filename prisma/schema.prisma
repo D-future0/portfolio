@@ -1,5 +1,6 @@
-// Prisma 6 schema — accountant portfolio
-// One admin, content-driven public site.
+// Prisma 6 schema — multi-tenant portfolio platform
+// One shared database, row-level tenant isolation. Every content row
+// (Profile/Experience/Project/Certification) belongs to exactly one Tenant.
 
 generator client {
   provider = "prisma-client-js"
@@ -10,8 +11,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// --- Auth.js v5 required models (Credentials-only, but we keep Session/Account
-// for adapter compatibility and future-proofing) ---
+// --- Auth.js v5 required models ---
 
 model User {
   id            String    @id @default(cuid())
@@ -20,6 +20,9 @@ model User {
   passwordHash  String
   emailVerified DateTime?
   image         String?
+  role          UserRole  @default(TENANT)
+  tenants       Tenant[]
+
   accounts      Account[]
   sessions      Session[]
 
@@ -54,20 +57,71 @@ model Session {
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-// --- Site content ---
+// --- Tenancy ---
 
-// Singleton row (id always "profile") holding hero/about/contact/theme settings
+enum UserRole {
+  ADMIN
+  TENANT
+}
+
+enum PlanTier {
+  FREE
+  PRO
+}
+
+// A tenant is one portfolio instance. The owner is a User with role TENANT.
+// The admin is a separate superuser (role ADMIN) who never owns a tenant.
+model Tenant {
+  id String @id @default(cuid())
+
+  // Public address: /u/[slug]. Admin sets this at creation.
+  slug  String @unique
+  name  String
+  title String  @default("Independent Professional")
+
+  // Billing (Paystack). Forward-looking — nullable until paid.
+  plan              PlanTier  @default(FREE)
+  paystackCustomerCode String?
+  paystackPlanCode    String?
+  paystackSubscriptionCode String?
+  paystackSubscriptionStatus String?
+  trialEndsAt       DateTime?
+  paystackWebhookLast DateTime?
+
+  // Publish control. Edit-in-place: what the owner saves is live.
+  // published=false => 404 for visitors, still editable by owner.
+  published Boolean @default(true)
+
+  // Admin approval. Set when the admin makes a tenant live.
+  approvedAt DateTime?
+
+  // The single owner of this tenant.
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  ownerId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  profile        Profile?
+  experiences    Experience[]
+  projects       Project[]
+  certifications Certification[]
+  subscriptions  Subscription[]
+}
+
+// --- Site content (all tenant-scoped) ---
+
 model Profile {
-  id String @id @default("profile")
+  id String @default("profile")
 
   // Hero
   name       String  @default("Your Name")
-  title      String  @default("Chartered Accountant")
+  title      String  @default("Independent Professional")
   heroTagline String @default("Numbers you can trust, insight you can act on.")
   heroImageUrl String?
 
   // About
-  bio        String  @default("Write a short professional bio here.")
+  bio String @default("Write a short professional bio here.")
 
   // Stats shown in hero (the "ledger tally")
   yearsExperience Int @default(0)
@@ -83,10 +137,17 @@ model Profile {
   twitterUrl   String?
   resumeUrl    String?
 
-  // Theme (the one design knob the admin can change)
+  // Theme (the one design knob the admin/owner can change)
   accentColor String @default("#B08D57")
 
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  // "" is a migration sentinel: existing rows get this default from db push,
+  // then seed.ts migrates them into the demo tenant.
+  tenantId String @unique @default("")
+
   updatedAt DateTime @updatedAt
+
+  @@id([id, tenantId])
 }
 
 model Experience {
@@ -97,11 +158,18 @@ model Experience {
   endDate     DateTime?
   current     Boolean  @default(false)
   location    String?
-  bullets     String[] // achievement bullet points
+  bullets     String[]
   order       Int      @default(0)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  // "" is a migration sentinel: existing rows get this default from db push,
+  // then seed.ts migrates them into the demo tenant.
+  tenantId String @default("")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@unique([id, tenantId])
 }
 
 model Project {
@@ -114,8 +182,15 @@ model Project {
   tags        String[]
   order       Int      @default(0)
 
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  // "" is a migration sentinel: existing rows get this default from db push,
+  // then seed.ts migrates them into the demo tenant.
+  tenantId String @default("")
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@unique([id, tenantId])
 }
 
 model Certification {
@@ -125,6 +200,51 @@ model Certification {
   issueDate    DateTime?
   credentialUrl String?
   order        Int       @default(0)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenantId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([id, tenantId])
+}
+
+// --- Billing state (Paystack). Kept in our DB so the app can gate features
+// without re-fetching Paystack on every request. Paystack is the source of
+// truth; these rows are the cache. ---
+model Plan {
+  id String @id @default(cuid())
+
+  // Our plan key, mirrored to Paystack plan name.
+  key String @unique // "free" | "pro"
+
+  // Paystack plan code, if one exists on the integration.
+  paystackPlanCode String?
+
+  // Amount in the smallest currency unit (e.g. kobo for NGN).
+  amount   Int
+  interval String // "monthly" | "annually"
+  currency String @default("NGN")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Subscription {
+  id String @id @default(cuid())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenantId String
+
+  paystackCustomerCode       String?
+  paystackSubscriptionCode   String @unique
+  paystackAuthorizationCode  String?
+  planCode                   String
+  status                     String // active, trial, canceled, expired, etc.
+  startsAt                   DateTime?
+  endsAt                     DateTime?
+  trialEndsAt                DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

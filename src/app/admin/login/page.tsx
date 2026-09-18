@@ -3,6 +3,7 @@
 import { useState, type FormEvent, Suspense } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 
 function LoginForm() {
   const router = useRouter();
@@ -33,7 +34,7 @@ function LoginForm() {
 
   return (
     <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center px-6">
-      <h1 className="font-display text-2xl italic text-ink">Admin sign in</h1>
+      <h1 className="font-display text-2xl italic text-ink">Sign in to your workspace</h1>
       <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-4">
         <label className="flex flex-col gap-1.5 text-sm">
           Email
@@ -62,6 +63,9 @@ function LoginForm() {
           {loading ? "Signing in…" : "Sign in"}
         </button>
       </form>
+      <p className="mt-6 text-sm text-ink-soft">
+        New here? <Link href="/signup" className="text-ink underline">Start a 30-day free trial</Link>
+      </p>
     </main>
   );
 }

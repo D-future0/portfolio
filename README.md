@@ -1,8 +1,8 @@
-# Accountant Portfolio
+# Professional Portfolio SaaS
 
-A fast, animated portfolio site with a private admin panel for editing
-almost everything — hero, bio, experience, projects, certifications,
-contact details, and accent color — without touching code.
+A multi-tenant portfolio SaaS for professionals, studios, and specialists.
+Each workspace gets a public portfolio URL, a private editor, and a 30-day
+free trial before upgrading to a paid plan.
 
 **Stack:** Next.js 16 · React 19 · TypeScript · Tailwind CSS v4 ·
 Prisma 6 · PostgreSQL · Auth.js v5 · Framer Motion · Resend ·
@@ -39,8 +39,8 @@ Run it:
 npm run dev
 ```
 
-Visit `/` for the public site and `/admin/login` to sign in with the
-`ADMIN_EMAIL`/`ADMIN_PASSWORD` you set.
+Visit `/` for the public site, `/signup` to create a workspace with a 30-day
+free trial, and `/admin/login` to sign in.
 
 ## 2. Deploying to Vercel
 

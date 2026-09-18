@@ -13,12 +13,18 @@ const PRESETS = [
 ];
 
 export function ThemeForm({
+  tenantId,
+  slug,
+  accentColor,
   profile,
 }: {
-  profile: { accentColor: string } & Record<string, unknown>;
+  tenantId: string;
+  slug: string;
+  accentColor: string;
+  profile: Record<string, unknown>;
 }) {
-  const [color, setColor] = useState(profile.accentColor);
-  const [pending, startTransition] = useTransition();
+  const [color, setColor] = useState(accentColor);
+  const [, startTransition] = useTransition();
   const [status, setStatus] = useState<"idle" | "saved" | "error">("idle");
   const router = useRouter();
 
@@ -26,7 +32,7 @@ export function ThemeForm({
     setColor(next);
     setStatus("idle");
     startTransition(async () => {
-      const result = await updateProfile({ ...profile, accentColor: next });
+      const result = await updateProfile({ tenantId, slug, ...profile, accentColor: next });
       setStatus(result.ok ? "saved" : "error");
       if (result.ok) router.refresh();
     });
@@ -67,10 +73,7 @@ export function ThemeForm({
         <span className="font-mono text-xs text-ink-soft">{color}</span>
       </label>
 
-      {pending ? <p className="text-sm text-ink-soft">Saving…</p> : null}
-      {status === "saved" && !pending ? (
-        <p className="text-sm text-ink-soft">Saved.</p>
-      ) : null}
+      {status === "saved" ? <p className="text-sm text-ink-soft">Saved.</p> : null}
       {status === "error" ? (
         <p className="text-sm text-red-700">Could not save. Try again.</p>
       ) : null}

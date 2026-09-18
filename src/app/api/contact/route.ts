@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { contactFormSchema } from "@/lib/validation";
 import { getProfile } from "@/lib/content";
+import { db } from "@/lib/db";
 
 export async function POST(request: Request) {
   let body: unknown;
@@ -33,7 +34,15 @@ export async function POST(request: Request) {
     );
   }
 
-  const profile = await getProfile();
+  const tenantSlug = request.headers.get("x-portfolio-slug");
+  if (!tenantSlug) {
+    return NextResponse.json({ error: "Portfolio context is required." }, { status: 400 });
+  }
+  const tenant = await db.tenant.findUnique({ where: { slug: tenantSlug } });
+  const profile = tenant ? await getProfile(tenant.id) : null;
+  if (!profile) {
+    return NextResponse.json({ error: "Portfolio not found." }, { status: 404 });
+  }
   const resend = new Resend(apiKey);
   const { name, email, message } = parsed.data;
 
