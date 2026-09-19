@@ -9,7 +9,7 @@ export default async function Home() {
 
   return (
     <>
-      <Nav name="Portfolios" />
+      {/* <Nav name="Portfolios" /> */}
       <main className="mx-auto max-w-5xl px-6 py-20">
         <div className="mb-16 max-w-2xl">
           <p className="font-display text-4xl leading-[1.1] text-ink sm:text-5xl">

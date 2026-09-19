@@ -121,10 +121,12 @@ export function ProfileForm({ tenantId, slug, profile }: ProfileFormProps) {
           value={form.twitterUrl ?? ""}
           onChange={(v) => set("twitterUrl", v)}
         />
-        <Field
-          label="Resume/CV URL"
-          value={form.resumeUrl ?? ""}
-          onChange={(v) => set("resumeUrl", v)}
+        <ImageUploadField
+          label="Resume/CV PDF"
+          value={form.resumeUrl}
+          onChange={(url) => set("resumeUrl", url)}
+          accept="application/pdf"
+          fileLabel="PDF"
         />
       </Section>
 

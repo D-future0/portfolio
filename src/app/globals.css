@@ -38,6 +38,13 @@ body {
   font-family: var(--font-sans);
 }
 
+/* Prevent Safari from zooming focused controls on small screens. */
+input,
+textarea,
+select {
+  font-size: 16px;
+}
+
 ::selection {
   background: var(--accent);
   color: var(--accent-ink);

@@ -24,8 +24,8 @@ Fill in `.env.local`:
   login (see step 2). Not read at runtime.
 - `RESEND_API_KEY` — from resend.com, for the contact form to send you email.
 - `CRON_SECRET` — a random secret used to authenticate daily trial reminder jobs.
-- `BLOB_READ_WRITE_TOKEN` — only needed for local dev; Vercel sets this
-  automatically once you create a Blob store in your project's Storage tab.
+- `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, and `CLOUDINARY_API_SECRET` —
+  Cloudinary credentials for image and PDF uploads.
 - `SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DSN` — optional Sentry error monitoring DSNs.
 - `SENTRY_TRACES_SAMPLE_RATE` / `NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE` — optional trace sampling rates.
 

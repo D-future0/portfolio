@@ -17,13 +17,20 @@ function LoginForm() {
     setError(null);
 
     const form = new FormData(e.currentTarget);
-    const res = await signIn("credentials", {
-      email: form.get("email"),
-      password: form.get("password"),
-      redirect: false,
-    });
+    const res = await Promise.race([
+      signIn("credentials", {
+        email: form.get("email"),
+        password: form.get("password"),
+        redirect: false,
+      }),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 15_000)),
+    ]);
 
     setLoading(false);
+    if (!res) {
+      setError("The server took too long to respond. Check the database connection and try again.");
+      return;
+    }
     if (res?.error) {
       setError("Incorrect email or password.");
       return;

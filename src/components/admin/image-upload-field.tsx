@@ -7,10 +7,14 @@ export function ImageUploadField({
   label,
   value,
   onChange,
+  accept = "image/png,image/jpeg,image/webp,image/avif",
+  fileLabel = "image",
 }: {
   label: string;
   value: string | null | undefined;
   onChange: (url: string) => void;
+  accept?: string;
+  fileLabel?: "image" | "PDF";
 }) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -41,16 +45,16 @@ export function ImageUploadField({
     <div className="flex flex-col gap-1.5 text-sm">
       <span>{label}</span>
       <div className="flex items-center gap-4">
-        {value ? (
+        {value && fileLabel === "image" ? (
           <div className="relative h-16 w-16 overflow-hidden rounded-full border border-line">
             <Image src={value} alt="" fill sizes="64px" className="object-cover" />
           </div>
         ) : null}
         <label className="cursor-pointer border border-line px-3 py-2 text-xs text-ink-soft hover:border-ink">
-          {uploading ? "Uploading…" : value ? "Replace image" : "Upload image"}
+          {uploading ? "Uploading…" : value ? `Replace ${fileLabel}` : `Upload ${fileLabel}`}
           <input
             type="file"
-            accept="image/png,image/jpeg,image/webp,image/avif"
+            accept={accept}
             onChange={handleFile}
             className="hidden"
             disabled={uploading}

@@ -8,6 +8,7 @@ import { getProfessionExample, PROFESSIONS, TEMPLATES } from "@/lib/onboarding";
 export function OnboardingWizard({ name }: { name: string }) {
   const router = useRouter();
   const [profession, setProfession] = useState("consultant");
+  const [customProfession, setCustomProfession] = useState("");
   const [template, setTemplate] = useState("editorial");
   const example = getProfessionExample(profession);
   const [title, setTitle] = useState(example.title);
@@ -20,7 +21,8 @@ export function OnboardingWizard({ name }: { name: string }) {
   async function finish() {
     setPending(true);
     setError(null);
-    const result = await completeOnboarding({ profession, template, title, heroTagline, bio });
+    const selectedProfession = profession === "custom" ? customProfession.trim() : profession;
+    const result = await completeOnboarding({ profession: selectedProfession, template, title, heroTagline, bio });
     if (!result.ok) {
       setError(result.error);
       setPending(false);
@@ -46,7 +48,28 @@ export function OnboardingWizard({ name }: { name: string }) {
                 <span className="mt-1 block text-xs text-ink-soft">{item.description}</span>
               </button>
             ))}
+            <button
+              type="button"
+              onClick={() => setProfession("custom")}
+              className={`border p-4 text-left ${profession === "custom" ? "border-ink bg-paper-raised" : "border-line"}`}
+            >
+              <span className="block text-sm text-ink">Other</span>
+              <span className="mt-1 block text-xs text-ink-soft">Add your own profession or specialty.</span>
+            </button>
           </div>
+          {profession === "custom" ? (
+            <label className="mt-5 flex max-w-md flex-col gap-1.5 text-sm">
+              Your profession
+              <input
+                value={customProfession}
+                onChange={(event) => setCustomProfession(event.target.value)}
+                placeholder="e.g. Architect, researcher, photographer"
+                maxLength={80}
+                className="border border-line bg-paper-raised px-3 py-2"
+                required
+              />
+            </label>
+          ) : null}
           <button onClick={() => setStep(1)} className="mt-8 border border-ink bg-ink px-5 py-2.5 text-sm text-paper">Continue</button>
         </section>
       ) : step === 1 ? (

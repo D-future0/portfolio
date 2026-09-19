@@ -29,7 +29,7 @@ export const signupSchema = z.object({
 });
 
 export const onboardingSchema = z.object({
-  profession: z.enum(["consultant", "designer", "developer", "coach", "lawyer", "agency", "creator"]),
+  profession: z.string().trim().min(2, "Enter a profession").max(80, "Profession is too long"),
   template: z.enum(["editorial", "studio", "signal"]),
   title: z.string().min(1).max(160),
   heroTagline: z.string().min(1).max(240),
