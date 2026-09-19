@@ -14,12 +14,12 @@ export default async function DashboardLayout({
     redirect("/admin/login");
   }
   if (session.user.role !== "TENANT" || !session.user.tenantId) {
-    redirect("/admin/login");
+    redirect(session.user.role === "ADMIN" ? "/admin" : "/admin/login");
   }
 
   const tenant = await getTenantByOwnerId(session.user.id);
   if (!tenant) {
-    redirect("/admin/login");
+    redirect("/admin/login?error=workspace");
   }
   if (!tenant.onboardingCompleted) {
     redirect("/onboarding");

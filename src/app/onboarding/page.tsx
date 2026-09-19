@@ -7,9 +7,10 @@ export const revalidate = 0;
 
 export default async function OnboardingPage() {
   const session = await auth();
-  if (!session?.user || session.user.role !== "TENANT") redirect("/admin/login");
+  if (!session?.user) redirect("/admin/login");
+  if (session.user.role !== "TENANT") redirect("/admin");
   const tenant = await getTenantByOwnerId(session.user.id);
-  if (!tenant) redirect("/admin/login");
+  if (!tenant) redirect("/admin?error=workspace");
   if (tenant.onboardingCompleted) redirect("/dashboard");
 
   return <OnboardingWizard name={tenant.profile?.name ?? tenant.name} />;

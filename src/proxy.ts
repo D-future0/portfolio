@@ -9,7 +9,8 @@ export default auth((req) => {
 
   if (isLoginPage) {
     if (isLoggedIn) {
-      return NextResponse.redirect(new URL("/admin", req.nextUrl));
+      const destination = req.auth?.user?.role === "ADMIN" ? "/admin" : "/dashboard";
+      return NextResponse.redirect(new URL(destination, req.nextUrl));
     }
     return NextResponse.next();
   }
